@@ -29,6 +29,18 @@ namespace ngl
 
   }
 
+  void NGLMessage::clearMessageQueue()
+  {
+    s_messageQueue.clear();
+  }
+
+  void NGLMessage::setFilename(const std::string_view &_fname)
+  {
+    FileConsumer *f=reinterpret_cast<FileConsumer *>(m_consumer.get());
+    if(f!=nullptr)
+      f->setFilename(_fname);
+  }
+
   NGLMessage::NGLMessage(const FromFilename &_f) :  m_mode(Mode::SERVER),m_comMode(CommunicationMode::FILE)
   {
     m_consumer=std::make_unique<FileConsumer>(_f.m_name);

@@ -38,12 +38,14 @@ TEST(NGLMessage,addMessage)
   ngl::NGLMessage message(ngl::NGLMessage::Mode::SERVER);
   message.addMessage("test message");
   EXPECT_TRUE(message.numMessages()==1);
+  message.clearMessageQueue();
 }
 
 TEST(NGLMessage,stdOut)
 {
   ngl::NGLMessage message(ngl::NGLMessage::Mode::SERVER,ngl::CommunicationMode::STDOUT);
   message.addMessage("test message to std out");
+  std::cout<<"Num messages "<<message.numMessages()<<'\n';
   EXPECT_TRUE(message.numMessages()==1);
   ngl::NGLMessage::launchMessageConsumer();
   while(ngl::NGLMessage::numMessages() !=0)
@@ -159,6 +161,35 @@ TEST(NGLMessage,fileConsumerFromFileName)
     message.addMessage(msg,Colours::WHITE);
     message.addMessage(msg,Colours::RESET);
 
+  }
+  while(ngl::NGLMessage::numMessages() !=0)
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  ngl::NGLMessage::stopConsuming();
+  EXPECT_TRUE(message.numMessages()==0);
+}
+
+
+TEST(NGLMessage,fileConsumerChangeFileName)
+{
+  ngl::NGLMessage message(ngl::NGLMessage::FromFilename("testFromFilename.out"));
+  ngl::NGLMessage::launchMessageConsumer();
+  for(size_t i=97; i<97+26; ++i)
+  {
+    std::string msg="test message ";
+    msg+=(int)i;
+    message.addMessage(msg,Colours::NORMAL,TimeFormat::TIME);
+    message.addMessage(msg,Colours::RED);
+    message.addMessage(msg,Colours::GREEN);
+    message.addMessage(msg,Colours::YELLOW,TimeFormat::TIMEDATE);
+    message.addMessage(msg,Colours::BLUE);
+
+    message.addMessage(msg,Colours::MAGENTA,TimeFormat::TIMEDATEDAY);
+    message.addMessage(msg,Colours::CYAN);
+    message.addMessage(msg,Colours::WHITE);
+    message.addMessage(msg,Colours::RESET);
+    std::string fname="testChange"+std::to_string(i)+".out";
+    message.setFilename(fname);
   }
   while(ngl::NGLMessage::numMessages() !=0)
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
