@@ -17,6 +17,10 @@ class NGLMessage
 
   public :
     enum class Mode: bool{CLIENT,SERVER};
+    struct FromFilename{
+        FromFilename(const std::string_view &_name) : m_name(_name){}
+        std::string_view m_name;
+    };
 
     bool isActive() const {return m_active;}
     Mode getMode() const {return m_mode;}
@@ -24,6 +28,8 @@ class NGLMessage
     static size_t numMessages()  {return s_messageQueue.size();}
     static void launchMessageConsumer();
     NGLMessage(Mode _mode,CommunicationMode _comMode=CommunicationMode::STDERR);
+    NGLMessage(const FromFilename &_fname);
+
     static void stopConsuming(){ s_consuming.clear();}
   private :
     bool m_active=false;

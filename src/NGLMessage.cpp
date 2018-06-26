@@ -23,9 +23,15 @@ namespace ngl
       case CommunicationMode::NULLCONSUMER : m_consumer=std::make_unique<NullMessageConsumer>(); break;
       case CommunicationMode::FILE :
 
-      m_consumer=std::make_unique<FileConsumer>("_fname.out"); break;
+      m_consumer=std::make_unique<FileConsumer>("fname.out"); break;
       break;
     }
+
+  }
+
+  NGLMessage::NGLMessage(const FromFilename &_f) :  m_mode(Mode::SERVER),m_comMode(CommunicationMode::FILE)
+  {
+    m_consumer=std::make_unique<FileConsumer>(_f.m_name);
 
   }
 
