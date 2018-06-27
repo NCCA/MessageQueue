@@ -19,12 +19,14 @@ CONFIG-=app_bundle
 SOURCES+= $$PWD/main.cpp \
           ../src/NGLMessage.cpp \
           ../src/AbstractMessageConsumer.cpp \
-          ../src/FileConsumer.cpp
+          ../src/FileConsumer.cpp \
+          ../src/PipeConsumer.cpp
 HEADERS +=../include/NGLMessage.h \
           ../include/AbstractMessageConsumer.h \
           ../include/STDERRConsumer.h \
           ../include/STDOutConsumer.h \
-          ../include/FileConsumer.h
+          ../include/FileConsumer.h \
+          ../include/PipeConsumer.h
 
 # same for the .h files
 

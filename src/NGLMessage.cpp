@@ -5,26 +5,33 @@
 #include "STDERRConsumer.h"
 #include "STDOutConsumer.h"
 #include "FileConsumer.h"
-
+#include "PipeConsumer.h"
 namespace ngl
 {
   std::vector <message> NGLMessage::s_messageQueue;
-  std::atomic_flag	 NGLMessage::s_consuming=ATOMIC_FLAG_INIT;
+  std::atomic_flag NGLMessage::s_consuming=ATOMIC_FLAG_INIT;
+  std::atomic_flag NGLMessage::s_server=ATOMIC_FLAG_INIT;
   std::unique_ptr<AbstractMessageConsumer> NGLMessage::m_consumer=std::make_unique<StdErrConsumer>();
+  NGLMessage::Mode NGLMessage::m_mode=Mode::CLIENT;
   std::mutex g_messageQueueLock;
+  bool NGLMessage::m_active=true;
 
-  NGLMessage::NGLMessage(Mode _mode,CommunicationMode _comMode) : m_mode(_mode),m_comMode(_comMode)
+
+
+  NGLMessage::NGLMessage(Mode _mode,CommunicationMode _comMode) : m_comMode(_comMode)
   {
+    m_mode=_mode;
     s_consuming.test_and_set();
     switch (m_comMode)
     {
-      case CommunicationMode::STDERR : m_consumer=std::make_unique<StdErrConsumer>(); break;
-      case CommunicationMode::STDOUT : m_consumer=std::make_unique<StdOutConsumer>(); break;
-      case CommunicationMode::NULLCONSUMER : m_consumer=std::make_unique<NullMessageConsumer>(); break;
-      case CommunicationMode::FILE :
-
-      m_consumer=std::make_unique<FileConsumer>("fname.out"); break;
-      break;
+      case CommunicationMode::STDERR : m_consumer=std::make_unique<StdErrConsumer>(); m_mode=Mode::CLIENTSERVER; break;
+      case CommunicationMode::STDOUT : m_consumer=std::make_unique<StdOutConsumer>(); m_mode=Mode::CLIENTSERVER; break;
+      case CommunicationMode::NULLCONSUMER : m_consumer=std::make_unique<NullMessageConsumer>(); m_mode=Mode::CLIENTSERVER; break;
+      case CommunicationMode::FILE :  m_consumer=std::make_unique<FileConsumer>("NGLMessageDebug.out"); m_mode=Mode::CLIENTSERVER; break;
+      case CommunicationMode::NAMEDPIPE : m_consumer=std::make_unique<PipeConsumer>("/tmp/NCCADebug"); break;
+      case CommunicationMode::TCPIP : break;
+      case CommunicationMode::UDP : break;
+      case CommunicationMode::SHAREDMEMORY : break;
     }
 
   }
@@ -41,9 +48,17 @@ namespace ngl
       f->setFilename(_fname);
   }
 
-  NGLMessage::NGLMessage(const FromFilename &_f) :  m_mode(Mode::SERVER),m_comMode(CommunicationMode::FILE)
+  NGLMessage::NGLMessage(const FromFilename &_f) :  m_comMode(CommunicationMode::FILE)
   {
+    m_mode=Mode::CLIENTSERVER;
     m_consumer=std::make_unique<FileConsumer>(_f.m_name);
+
+  }
+
+  NGLMessage::NGLMessage(const FromNamedPipe &_f) : m_comMode(CommunicationMode::NAMEDPIPE)
+  {
+     m_mode=Mode::SERVER;
+    m_consumer=std::make_unique<PipeConsumer>(_f.m_name);
 
   }
 
@@ -57,8 +72,13 @@ namespace ngl
 
 
 
-  void NGLMessage::launchMessageConsumer()
+  void NGLMessage::startMessageConsumer()
   {
+    if(m_mode == Mode::SERVER)
+    {
+      std::cerr<<"Trying to launch consumer on Server \n";
+      return;
+    }
     std::thread t([]()
     {
       while(s_consuming.test_and_set())
@@ -75,8 +95,20 @@ namespace ngl
       }
 
     });
+    m_active=true;
     t.detach();
+  }
 
+
+  bool NGLMessage::startServer()
+  {
+    if(m_mode !=Mode::SERVER)
+    {
+      std::cerr<<"Error attempting to start server in Client Mode \n";
+      return false;
+    }
+
+    else return true;
   }
 
 

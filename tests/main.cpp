@@ -23,14 +23,29 @@ class Environment : public  ::testing::Environment
 TEST(NGLMessage,defaultctor)
 {
   {
-    ngl::NGLMessage message(ngl::NGLMessage::Mode::CLIENT);
-    EXPECT_TRUE(message.isActive()==false);
+    ngl::NGLMessage message(ngl::NGLMessage::Mode::CLIENT,ngl::CommunicationMode::NAMEDPIPE);
     EXPECT_TRUE(message.getMode()==ngl::NGLMessage::Mode::CLIENT);
   }
   {
-    ngl::NGLMessage message(ngl::NGLMessage::Mode::SERVER);
+    ngl::NGLMessage message(ngl::NGLMessage::Mode::SERVER,ngl::CommunicationMode::NAMEDPIPE);
     EXPECT_TRUE(message.getMode()==ngl::NGLMessage::Mode::SERVER);
   }
+  {
+    ngl::NGLMessage message(ngl::NGLMessage::Mode::CLIENTSERVER,ngl::CommunicationMode::FILE);
+    EXPECT_TRUE(message.getMode()==ngl::NGLMessage::Mode::CLIENTSERVER);
+  }
+
+  {
+    ngl::NGLMessage message(ngl::NGLMessage::Mode::CLIENT,ngl::CommunicationMode::NAMEDPIPE);
+    EXPECT_FALSE(message.startServer());
+  }
+  {
+    ngl::NGLMessage message(ngl::NGLMessage::Mode::SERVER,ngl::CommunicationMode::NAMEDPIPE);
+    EXPECT_TRUE(message.startServer());
+    message.stopServer();
+  }
+
+
 }
 
 TEST(NGLMessage,addMessage)
@@ -47,11 +62,11 @@ TEST(NGLMessage,stdOut)
   message.addMessage("test message to std out");
   std::cout<<"Num messages "<<message.numMessages()<<'\n';
   EXPECT_TRUE(message.numMessages()==1);
-  ngl::NGLMessage::launchMessageConsumer();
+  ngl::NGLMessage::startMessageConsumer();
   while(ngl::NGLMessage::numMessages() !=0)
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  ngl::NGLMessage::stopConsuming();
+  ngl::NGLMessage::stopMessageConsumer();
   EXPECT_TRUE(message.numMessages()==0);
 
 }
@@ -61,7 +76,7 @@ TEST(NGLMessage,writeOutput)
 {
   ngl::NGLMessage message(ngl::NGLMessage::Mode::CLIENT);
 
-  ngl::NGLMessage::launchMessageConsumer();
+  ngl::NGLMessage::startMessageConsumer();
   for(size_t i=97; i<97+26; ++i)
   {
     std::string msg="test message ";
@@ -81,7 +96,7 @@ TEST(NGLMessage,writeOutput)
   while(ngl::NGLMessage::numMessages() !=0)
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  ngl::NGLMessage::stopConsuming();
+  ngl::NGLMessage::stopMessageConsumer();
   EXPECT_TRUE(message.numMessages()==0);
 
 }
@@ -89,7 +104,7 @@ TEST(NGLMessage,writeOutput)
 TEST(NGLMessage,nullConsumer)
 {
   ngl::NGLMessage message(ngl::NGLMessage::Mode::SERVER,ngl::CommunicationMode::NULLCONSUMER);
-  ngl::NGLMessage::launchMessageConsumer();
+  ngl::NGLMessage::startMessageConsumer();
   for(size_t i=97; i<97+26; ++i)
   {
     std::string msg="test message ";
@@ -109,7 +124,7 @@ TEST(NGLMessage,nullConsumer)
   while(ngl::NGLMessage::numMessages() !=0)
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  ngl::NGLMessage::stopConsuming();
+  ngl::NGLMessage::stopMessageConsumer();
   EXPECT_TRUE(message.numMessages()==0);
 }
 
@@ -117,7 +132,7 @@ TEST(NGLMessage,nullConsumer)
 TEST(NGLMessage,fileConsumer)
 {
   ngl::NGLMessage message(ngl::NGLMessage::Mode::SERVER,ngl::CommunicationMode::FILE);
-  ngl::NGLMessage::launchMessageConsumer();
+  ngl::NGLMessage::startMessageConsumer();
   for(size_t i=97; i<97+26; ++i)
   {
     std::string msg="test message ";
@@ -137,15 +152,46 @@ TEST(NGLMessage,fileConsumer)
   while(ngl::NGLMessage::numMessages() !=0)
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  ngl::NGLMessage::stopConsuming();
+  ngl::NGLMessage::stopMessageConsumer();
   EXPECT_TRUE(message.numMessages()==0);
 }
+
+
+
+TEST(NGLMessage,fifoConsumer)
+{
+  ngl::NGLMessage message(ngl::NGLMessage::Mode::SERVER,ngl::CommunicationMode::NAMEDPIPE);
+  for(size_t i=97; i<97+26; ++i)
+  {
+    std::string msg="test message ";
+    msg+=(int)i;
+    message.addMessage(msg,Colours::NORMAL,TimeFormat::TIME);
+    message.addMessage(msg,Colours::RED);
+    message.addMessage(msg,Colours::GREEN);
+    message.addMessage(msg,Colours::YELLOW,TimeFormat::TIMEDATE);
+    message.addMessage(msg,Colours::BLUE);
+
+    message.addMessage(msg,Colours::MAGENTA,TimeFormat::TIMEDATEDAY);
+    message.addMessage(msg,Colours::CYAN);
+    message.addMessage(msg,Colours::WHITE);
+    message.addMessage(msg,Colours::RESET);
+
+  }
+  EXPECT_TRUE(message.numMessages()>0);
+  ngl::NGLMessage::startMessageConsumer();
+//  while(ngl::NGLMessage::numMessages() !=0)
+//    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+//  ngl::NGLMessage::stopConsuming();
+  EXPECT_TRUE(message.numMessages()==0);
+}
+
 
 
 TEST(NGLMessage,fileConsumerFromFileName)
 {
   ngl::NGLMessage message(ngl::NGLMessage::FromFilename("testFromFilename.out"));
-  ngl::NGLMessage::launchMessageConsumer();
+  ngl::NGLMessage::startMessageConsumer();
   for(size_t i=97; i<97+26; ++i)
   {
     std::string msg="test message ";
@@ -165,7 +211,7 @@ TEST(NGLMessage,fileConsumerFromFileName)
   while(ngl::NGLMessage::numMessages() !=0)
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  ngl::NGLMessage::stopConsuming();
+  ngl::NGLMessage::stopMessageConsumer();
   EXPECT_TRUE(message.numMessages()==0);
 }
 
@@ -173,7 +219,7 @@ TEST(NGLMessage,fileConsumerFromFileName)
 TEST(NGLMessage,fileConsumerChangeFileName)
 {
   ngl::NGLMessage message(ngl::NGLMessage::FromFilename("testFromFilename.out"));
-  ngl::NGLMessage::launchMessageConsumer();
+  ngl::NGLMessage::startMessageConsumer();
   for(size_t i=97; i<97+26; ++i)
   {
     std::string msg="test message ";
@@ -194,7 +240,7 @@ TEST(NGLMessage,fileConsumerChangeFileName)
   while(ngl::NGLMessage::numMessages() !=0)
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  ngl::NGLMessage::stopConsuming();
+  ngl::NGLMessage::stopMessageConsumer();
   EXPECT_TRUE(message.numMessages()==0);
 }
 
@@ -220,11 +266,11 @@ TEST(NGLMessage,testMultiThread)
     t.join();
   }
   ASSERT_TRUE(ngl::NGLMessage::numMessages() == 20*10);
-  ngl::NGLMessage::launchMessageConsumer();
+  ngl::NGLMessage::startMessageConsumer();
   while(ngl::NGLMessage::numMessages() !=0)
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  ngl::NGLMessage::stopConsuming();
+  ngl::NGLMessage::stopMessageConsumer();
   EXPECT_TRUE(message.numMessages()==0);
 }
 
