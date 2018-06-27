@@ -133,16 +133,16 @@ namespace ngl
     {
       std::thread t([]()
       {
-        char str1[2048];
+        char data[2048];
+        s_fifoID = open(s_fifoName.c_str(), O_RDONLY );
         while(true)
         {
-          s_fifoID = open(s_fifoName.c_str(), O_RDONLY );
-          auto size=read(s_fifoID, str1, 2048);
-          str1[size]='\0';
-          std::cerr<<str1;
-          close(s_fifoID);
+          auto size=read(s_fifoID, data, 2048);
+          data[size]='\0';
+          std::cerr<<data;
         }
         });
+      close(s_fifoID);
       s_active=true;
       t.detach();
     }
@@ -202,14 +202,13 @@ namespace ngl
   {
     if(s_fifoName !="")
     {
-      std::cerr<<"Making FIFO \n";
+//      std::cerr<<"Making FIFO \n";
       mkfifo(s_fifoName.c_str(), 0666);
       s_fifoID = open(s_fifoName.c_str(), O_RDWR | O_NONBLOCK);
-      perror("make fifo");
-      std::cout<<"ID "<<s_fifoID<<" name "<<s_fifoName<<'\n';
+//      perror("make fifo");
+//      std::cout<<"ID "<<s_fifoID<<" name "<<s_fifoName<<'\n';
     }
     return  (s_fifoID == -1) ? true : false;
-
   }
 
 
