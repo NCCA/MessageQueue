@@ -1,6 +1,12 @@
 #include "NGLMessage.h"
 #include <thread>
 #include <iostream>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <strstream>
+
 #include "AbstractMessageConsumer.h"
 #include "STDERRConsumer.h"
 #include "STDOutConsumer.h"
@@ -12,22 +18,27 @@ namespace ngl
   std::atomic_flag NGLMessage::s_consuming=ATOMIC_FLAG_INIT;
   std::atomic_flag NGLMessage::s_server=ATOMIC_FLAG_INIT;
   std::unique_ptr<AbstractMessageConsumer> NGLMessage::m_consumer=std::make_unique<StdErrConsumer>();
-  NGLMessage::Mode NGLMessage::m_mode=Mode::CLIENT;
+  NGLMessage::Mode NGLMessage::s_mode=Mode::CLIENT;
   std::mutex g_messageQueueLock;
-  bool NGLMessage::m_active=true;
+  std::mutex g_serverLock;
+  bool NGLMessage::s_active=true;
+  CommunicationMode NGLMessage::s_comMode=CommunicationMode::STDERR;
 
+  static std::string s_fifoName="/tmp/nccadebug";
+  static int s_fifoID=0;
 
-
-  NGLMessage::NGLMessage(Mode _mode,CommunicationMode _comMode) : m_comMode(_comMode)
+  NGLMessage::NGLMessage(Mode _mode,CommunicationMode _comMode)
   {
-    m_mode=_mode;
+    s_mode=_mode;
+    s_comMode=_comMode;
     s_consuming.test_and_set();
-    switch (m_comMode)
+    s_server.test_and_set();
+    switch (s_comMode)
     {
-      case CommunicationMode::STDERR : m_consumer=std::make_unique<StdErrConsumer>(); m_mode=Mode::CLIENTSERVER; break;
-      case CommunicationMode::STDOUT : m_consumer=std::make_unique<StdOutConsumer>(); m_mode=Mode::CLIENTSERVER; break;
-      case CommunicationMode::NULLCONSUMER : m_consumer=std::make_unique<NullMessageConsumer>(); m_mode=Mode::CLIENTSERVER; break;
-      case CommunicationMode::FILE :  m_consumer=std::make_unique<FileConsumer>("NGLMessageDebug.out"); m_mode=Mode::CLIENTSERVER; break;
+      case CommunicationMode::STDERR : m_consumer=std::make_unique<StdErrConsumer>(); s_mode=Mode::CLIENTSERVER; break;
+      case CommunicationMode::STDOUT : m_consumer=std::make_unique<StdOutConsumer>(); s_mode=Mode::CLIENTSERVER; break;
+      case CommunicationMode::NULLCONSUMER : m_consumer=std::make_unique<NullMessageConsumer>(); s_mode=Mode::CLIENTSERVER; break;
+      case CommunicationMode::FILE :  m_consumer=std::make_unique<FileConsumer>("NGLMessageDebug.out"); s_mode=Mode::CLIENTSERVER; break;
       case CommunicationMode::NAMEDPIPE : m_consumer=std::make_unique<PipeConsumer>("/tmp/NCCADebug"); break;
       case CommunicationMode::TCPIP : break;
       case CommunicationMode::UDP : break;
@@ -41,6 +52,12 @@ namespace ngl
     s_messageQueue.clear();
   }
 
+
+  NGLMessage::~NGLMessage()
+  {
+
+  }
+
   void NGLMessage::setFilename(const std::string_view &_fname)
   {
     FileConsumer *f=reinterpret_cast<FileConsumer *>(m_consumer.get());
@@ -48,18 +65,28 @@ namespace ngl
       f->setFilename(_fname);
   }
 
-  NGLMessage::NGLMessage(const FromFilename &_f) :  m_comMode(CommunicationMode::FILE)
+  NGLMessage::NGLMessage(const FromFilename &_f)
   {
-    m_mode=Mode::CLIENTSERVER;
+    s_comMode=CommunicationMode::FILE;
+    s_mode=Mode::CLIENTSERVER;
     m_consumer=std::make_unique<FileConsumer>(_f.m_name);
 
   }
 
-  NGLMessage::NGLMessage(const FromNamedPipe &_f) : m_comMode(CommunicationMode::NAMEDPIPE)
+  NGLMessage::NGLMessage(const FromNamedPipe &_f)
   {
-     m_mode=Mode::SERVER;
-    m_consumer=std::make_unique<PipeConsumer>(_f.m_name);
-
+    s_comMode=CommunicationMode::NAMEDPIPE;
+    s_mode=_f.m_mode;
+    s_fifoName=_f.m_name;
+    if(s_mode == Mode::CLIENT)
+    {
+      m_consumer=std::make_unique<PipeConsumer>(_f.m_name);
+    }
+    else if(s_mode == Mode::SERVER)
+    {
+      createFiFo();
+      s_server.test_and_set();
+    }
   }
 
   void NGLMessage::addMessage(const std::string &_message, Colours _c, TimeFormat _timeFormat)
@@ -74,41 +101,107 @@ namespace ngl
 
   void NGLMessage::startMessageConsumer()
   {
-    if(m_mode == Mode::SERVER)
+    if(s_mode == Mode::SERVER)
     {
       std::cerr<<"Trying to launch consumer on Server \n";
       return;
     }
-    std::thread t([]()
+    if( s_comMode == CommunicationMode::NULLCONSUMER ||
+        s_comMode == CommunicationMode::FILE ||
+        s_comMode == CommunicationMode::STDERR ||
+        s_comMode == CommunicationMode::STDOUT)
     {
-      while(s_consuming.test_and_set())
+      std::thread t([]()
       {
-      std::lock_guard<std::mutex> lock(g_messageQueueLock);
-      if(s_messageQueue.size() !=0)
-      {
-        auto msg=s_messageQueue.back();
-        s_messageQueue.pop_back();
-        m_consumer->consume(msg);
-      }
-//      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        while(s_consuming.test_and_set())
+        {
+        std::lock_guard<std::mutex> lock(g_messageQueueLock);
+        if(s_messageQueue.size() !=0)
+        {
+          auto msg=s_messageQueue.back();
+          s_messageQueue.pop_back();
+          m_consumer->consume(msg);
+        }
+  //      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
 
-      }
-
-    });
-    m_active=true;
-    t.detach();
-  }
+      });
+      s_active=true;
+      t.detach();
+     }
+   }
 
 
   bool NGLMessage::startServer()
   {
-    if(m_mode !=Mode::SERVER)
+    std::cerr<<"starting server\n";
+    if(s_mode !=Mode::SERVER)
     {
       std::cerr<<"Error attempting to start server in Client Mode \n";
       return false;
     }
+    if(s_comMode == CommunicationMode::NAMEDPIPE)
+    {
+       createFiFo();
+       std::thread t([]()
+       {
+         while(s_server.test_and_set())
+         {
+         std::lock_guard<std::mutex> lock(g_serverLock);
+         if(s_messageQueue.size() !=0)
+         {
+           auto msg=s_messageQueue.back();
+           s_messageQueue.pop_back();
+           std::strstream message;
+           message<<AbstractMessageConsumer::getColourString(msg.colour);
 
-    else return true;
+           // put_time returns a " " if time string is empty which is annoying!
+           if(msg.timeFormat !=TimeFormat::NONE)
+           {
+             std::string fmt=AbstractMessageConsumer::getTimeString(msg.timeFormat);
+             std::time_t tm = std::chrono::system_clock::to_time_t(msg.time);
+             message<<std::put_time(std::localtime(&tm),fmt.c_str())<<' ';
+           }
+
+
+           message<<msg.message;
+           write(s_fifoID,message.str(),message.pcount());
+
+         }
+         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+         }
+
+       });
+       s_active=true;
+       t.detach();
+       return true;
+    }
+    else return false;
+  }
+
+  bool NGLMessage::createFiFo()
+  {
+    if(s_fifoName !="")
+    {
+      std::cerr<<"Making FIFO \n";
+      mkfifo(s_fifoName.c_str(), 0666);
+      s_fifoID = open(s_fifoName.c_str(), O_RDWR | O_NONBLOCK);
+      perror("make fifo");
+      std::cout<<"ID "<<s_fifoID<<" name "<<s_fifoName<<'\n';
+    }
+    return  (s_fifoID == -1) ? true : false;
+
+  }
+
+
+
+  bool NGLMessage::createSocket()
+  {
+    return false;
+  }
+  bool NGLMessage::createSharedMemory()
+  {
+    return false;
   }
 
 

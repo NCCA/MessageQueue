@@ -5,16 +5,31 @@ void AbstractMessageConsumer::setTimeFormat(TimeFormat _f)
 {
   switch(_f)
   {
-    case TIME : m_timeString="%I:%M%p"; break;
-    case TIMEDATE : m_timeString="%R %D"; break;
-    case TIMEDATEDAY : m_timeString="%c"; break;
+    case TimeFormat::TIME : m_timeString="[%I:%M%p]"; break;
+    case TimeFormat::TIMEDATE : m_timeString="[%R %D]"; break;
+    case TimeFormat::TIMEDATEDAY : m_timeString="[%c]"; break;
+    case TimeFormat::NONE : m_timeString.clear(); break;
+
   }
 
 }
 
+std::string AbstractMessageConsumer::getTimeString(const  TimeFormat &_t)
+{
+  std::string time;
+  switch(_t)
+  {
+    case TimeFormat::TIME : time="[%I:%M%p]"; break;
+    case TimeFormat::TIMEDATE : time="[%R %D]"; break;
+    case TimeFormat::TIMEDATEDAY : time="[%c]"; break;
+    case TimeFormat::NONE : time.clear(); break;
+
+  }
+  return time;
+}
 
 
-std::string AbstractMessageConsumer::getColourString(const Colours &_colour) const
+std::string AbstractMessageConsumer::getColourString(const Colours &_colour)
 {
   std::string output;
   switch(_colour)
@@ -31,3 +46,4 @@ std::string AbstractMessageConsumer::getColourString(const Colours &_colour) con
   }
   return output;
 }
+

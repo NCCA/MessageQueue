@@ -26,15 +26,17 @@ class NGLMessage
 
     struct FromNamedPipe
     {
-      FromNamedPipe(const std::string_view &_name) : m_name(_name){}
+      FromNamedPipe(const std::string_view &_name, Mode _mode) : m_name(_name),m_mode(_mode){}
       std::string_view m_name;
+      Mode m_mode;
+
     };
     NGLMessage(Mode _mode,CommunicationMode _comMode=CommunicationMode::STDERR);
     NGLMessage(const FromFilename &_fname);
     NGLMessage(const FromNamedPipe &_fname);
-
-    static bool isActive()  {return m_active;}
-    static Mode getMode()   {return m_mode;}
+    ~NGLMessage();
+    static bool isActive()  {return s_active;}
+    static Mode getMode()   {return s_mode;}
     static void addMessage(const std::string &_message,Colours _c=Colours::NORMAL,TimeFormat _timeFormat=TimeFormat::TIME);
     static size_t numMessages()  {return s_messageQueue.size();}
     static void startMessageConsumer();
@@ -47,13 +49,16 @@ class NGLMessage
     static void clearMessageQueue();
     void setFilename(const std::string_view &_fname);
   private :
-    static bool m_active;
-    static Mode m_mode;
-    CommunicationMode m_comMode=CommunicationMode::STDERR;
+    static bool s_active;
+    static Mode s_mode;
+    static CommunicationMode s_comMode;
     static std::vector <message> s_messageQueue;
     static std::atomic_flag	 s_consuming;
     static std::atomic_flag	 s_server;
     static std::unique_ptr<AbstractMessageConsumer> m_consumer;
+    static bool createFiFo();
+    static bool createSocket();
+    static bool createSharedMemory();
 
 };
 

@@ -80,7 +80,7 @@ TEST(NGLMessage,writeOutput)
   for(size_t i=97; i<97+26; ++i)
   {
     std::string msg="test message ";
-    msg+=(int)i;
+    msg+=std::to_string(i);
     message.addMessage(msg,Colours::NORMAL,TimeFormat::TIME);
     message.addMessage(msg,Colours::RED);
     message.addMessage(msg,Colours::GREEN);
@@ -89,8 +89,8 @@ TEST(NGLMessage,writeOutput)
 
     message.addMessage(msg,Colours::MAGENTA,TimeFormat::TIMEDATEDAY);
     message.addMessage(msg,Colours::CYAN);
-    message.addMessage(msg,Colours::WHITE);
-    message.addMessage(msg,Colours::RESET);
+    message.addMessage(msg,Colours::WHITE,TimeFormat::NONE);
+    message.addMessage(msg,Colours::RESET,TimeFormat::NONE);
 
   }
   while(ngl::NGLMessage::numMessages() !=0)
@@ -108,7 +108,7 @@ TEST(NGLMessage,nullConsumer)
   for(size_t i=97; i<97+26; ++i)
   {
     std::string msg="test message ";
-    msg+=(int)i;
+    msg+=std::to_string(i);
     message.addMessage(msg,Colours::NORMAL,TimeFormat::TIME);
     message.addMessage(msg,Colours::RED);
     message.addMessage(msg,Colours::GREEN);
@@ -136,7 +136,7 @@ TEST(NGLMessage,fileConsumer)
   for(size_t i=97; i<97+26; ++i)
   {
     std::string msg="test message ";
-    msg+=(int)i;
+    msg+=std::to_string(i);
     message.addMessage(msg,Colours::NORMAL,TimeFormat::TIME);
     message.addMessage(msg,Colours::RED);
     message.addMessage(msg,Colours::GREEN);
@@ -145,8 +145,8 @@ TEST(NGLMessage,fileConsumer)
 
     message.addMessage(msg,Colours::MAGENTA,TimeFormat::TIMEDATEDAY);
     message.addMessage(msg,Colours::CYAN);
-    message.addMessage(msg,Colours::WHITE);
-    message.addMessage(msg,Colours::RESET);
+    message.addMessage(msg,Colours::WHITE,TimeFormat::TIMEDATEDAY);
+    message.addMessage(msg,Colours::RESET,TimeFormat::TIMEDATEDAY);
 
   }
   while(ngl::NGLMessage::numMessages() !=0)
@@ -164,7 +164,7 @@ TEST(NGLMessage,fifoConsumer)
   for(size_t i=97; i<97+26; ++i)
   {
     std::string msg="test message ";
-    msg+=(int)i;
+    msg+=std::to_string(i);
     message.addMessage(msg,Colours::NORMAL,TimeFormat::TIME);
     message.addMessage(msg,Colours::RED);
     message.addMessage(msg,Colours::GREEN);
@@ -173,12 +173,40 @@ TEST(NGLMessage,fifoConsumer)
 
     message.addMessage(msg,Colours::MAGENTA,TimeFormat::TIMEDATEDAY);
     message.addMessage(msg,Colours::CYAN);
-    message.addMessage(msg,Colours::WHITE);
+    message.addMessage(msg,Colours::WHITE,TimeFormat::TIMEDATEDAY);
     message.addMessage(msg,Colours::RESET);
 
   }
   EXPECT_TRUE(message.numMessages()>0);
-  ngl::NGLMessage::startMessageConsumer();
+//  ngl::NGLMessage::startMessageConsumer();
+//  while(ngl::NGLMessage::numMessages() !=0)
+//    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+//  ngl::NGLMessage::stopConsuming();
+  EXPECT_TRUE(message.numMessages()==0);
+}
+
+TEST(NGLMessage,fifoServerNamed)
+{
+  ngl::NGLMessage message(ngl::NGLMessage::FromNamedPipe("nccadebug",ngl::NGLMessage::Mode::SERVER));
+  for(size_t i=97; i<97+26; ++i)
+  {
+    std::string msg="test message ";
+    msg+=std::to_string(i);
+    message.addMessage(msg,Colours::NORMAL,TimeFormat::TIME);
+    message.addMessage(msg,Colours::RED);
+    message.addMessage(msg,Colours::GREEN);
+    message.addMessage(msg,Colours::YELLOW,TimeFormat::TIMEDATE);
+    message.addMessage(msg,Colours::BLUE);
+
+    message.addMessage(msg,Colours::MAGENTA,TimeFormat::TIMEDATEDAY);
+    message.addMessage(msg,Colours::CYAN);
+    message.addMessage(msg,Colours::WHITE,TimeFormat::TIMEDATEDAY);
+    message.addMessage(msg,Colours::RESET);
+
+  }
+  EXPECT_TRUE(message.numMessages()>0);
+//  ngl::NGLMessage::startMessageConsumer();
 //  while(ngl::NGLMessage::numMessages() !=0)
 //    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
@@ -204,7 +232,7 @@ TEST(NGLMessage,fileConsumerFromFileName)
 
     message.addMessage(msg,Colours::MAGENTA,TimeFormat::TIMEDATEDAY);
     message.addMessage(msg,Colours::CYAN);
-    message.addMessage(msg,Colours::WHITE);
+    message.addMessage(msg,Colours::WHITE,TimeFormat::NONE);
     message.addMessage(msg,Colours::RESET);
 
   }
@@ -223,7 +251,7 @@ TEST(NGLMessage,fileConsumerChangeFileName)
   for(size_t i=97; i<97+26; ++i)
   {
     std::string msg="test message ";
-    msg+=(int)i;
+    msg+=std::to_string(i);
     message.addMessage(msg,Colours::NORMAL,TimeFormat::TIME);
     message.addMessage(msg,Colours::RED);
     message.addMessage(msg,Colours::GREEN);
@@ -232,7 +260,7 @@ TEST(NGLMessage,fileConsumerChangeFileName)
 
     message.addMessage(msg,Colours::MAGENTA,TimeFormat::TIMEDATEDAY);
     message.addMessage(msg,Colours::CYAN);
-    message.addMessage(msg,Colours::WHITE);
+    message.addMessage(msg,Colours::WHITE,TimeFormat::NONE);
     message.addMessage(msg,Colours::RESET);
     std::string fname="testChange"+std::to_string(i)+".out";
     message.setFilename(fname);

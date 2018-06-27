@@ -3,8 +3,8 @@
 #include <string>
 #include <chrono>
 
-enum class Colours{NORMAL,RED,GREEN ,YELLOW,BLUE,MAGENTA,CYAN,WHITE,RESET};
-enum TimeFormat{TIME,TIMEDATE,TIMEDATEDAY};
+enum class Colours : char {NORMAL,RED,GREEN ,YELLOW,BLUE,MAGENTA,CYAN,WHITE,RESET};
+enum class TimeFormat : char {NONE,TIME,TIMEDATE,TIMEDATEDAY};
 
 struct message
 {
@@ -25,11 +25,12 @@ class AbstractMessageConsumer
     AbstractMessageConsumer(const AbstractMessageConsumer &)=delete;
     AbstractMessageConsumer &operator=(AbstractMessageConsumer &)=delete;
     void setTimeFormat(TimeFormat _f);
-    std::string getColourString(const Colours &_colour) const;
-
+    static std::string getColourString(const Colours &_colour) ;
+    static std::string getTimeString(const  TimeFormat &_t);
   protected :
     std::string m_timeString="%I:%M%p";
     Colours m_activeColour=Colours::NORMAL;
+    std::string getTimeString(const message &_message);
 
 };
 

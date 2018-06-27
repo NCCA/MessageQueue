@@ -13,8 +13,8 @@ class PipeConsumer : public AbstractMessageConsumer
     bool setPipeName(const std::string_view &_fifoName);
     virtual void consume(const message &_message) override;
   private :
-    std::ofstream m_output;
     std::string m_fifoName;
+    int m_fifoID;
 };
 
 
