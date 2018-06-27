@@ -128,8 +128,27 @@ namespace ngl
       });
       s_active=true;
       t.detach();
-     }
-   }
+     } // client server in one versions
+    else if(s_comMode == CommunicationMode::NAMEDPIPE)
+    {
+      std::thread t([]()
+      {
+        char str1[2048];
+        while(true)
+        {
+          s_fifoID = open(s_fifoName.c_str(), O_RDONLY );
+          auto size=read(s_fifoID, str1, 2048);
+          str1[size]='\0';
+          std::cerr<<str1;
+          close(s_fifoID);
+        }
+        });
+      s_active=true;
+      t.detach();
+    }
+
+
+  }
 
 
   bool NGLMessage::startServer()
