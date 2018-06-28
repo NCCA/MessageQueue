@@ -4,6 +4,7 @@
 #include <chrono>
 #include <string>
 #include <vector>
+#include <ostream>
 #include "AbstractMessageConsumer.h"
 namespace ngl
 {
@@ -38,6 +39,8 @@ class NGLMessage
     static bool isActive()  {return s_active;}
     static Mode getMode()   {return s_mode;}
     static void addMessage(const std::string &_message,Colours _c=Colours::NORMAL,TimeFormat _timeFormat=TimeFormat::TIME);
+    //static void addMessage(const std::string &_format ...);// , Colours _c=Colours::NORMAL,TimeFormat _timeFormat=TimeFormat::TIME );
+    static void addMessage(const std::string &_message);
     static size_t numMessages()  {return s_messageQueue.size();}
     static void startMessageConsumer();
     static void stopMessageConsumer(){ s_consuming.clear();}
@@ -61,6 +64,8 @@ class NGLMessage
     static bool createSharedMemory();
 
 };
+
+
 
 }
 #endif

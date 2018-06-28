@@ -8,6 +8,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
   m_ui->setupUi(this);
   QPalette p = m_ui->m_textEdit->palette();
+  m_thread = new Thread(m_ui->m_pipeName->text(),this);
   p.setColor(QPalette::Base, QColor(120, 120, 120));
   m_ui->m_textEdit->setPalette(p);
   connect(m_ui->m_connect ,static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
@@ -17,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent) :
               {
                 m_ui->m_connect->setText("disconnect");
                 m_connected=true;
-                m_thread = new Thread(m_ui->m_pipeName->text(),this);
+
                 m_thread->start();
                 connect(m_thread ,SIGNAL(text(QColor,QString)),this,SLOT(updateText(QColor,QString)));
 
@@ -27,9 +28,8 @@ MainWindow::MainWindow(QWidget *parent) :
                 m_ui->m_connect->setText("connect");
                 m_connected=false;
                 m_thread->stopThread();
-                disconnect(m_thread ,SIGNAL(text(QString)),this,SLOT(updateText(QString)));
-               // delete m_thread;
-
+//                disconnect(m_thread ,SIGNAL(text(QColor,QString)),this,SLOT(updateText(QColour,QString)));
+              //
               }
             });
 
@@ -41,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
   delete m_ui;
+
 }
 
 

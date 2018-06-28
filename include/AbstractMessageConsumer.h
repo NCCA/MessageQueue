@@ -10,8 +10,8 @@ struct message
 {
   std::chrono::system_clock::time_point time;
   std::string message;
-  Colours colour;
-  TimeFormat timeFormat;
+  Colours colour=Colours::RED;
+  TimeFormat timeFormat=TimeFormat::TIME;
 };
 
 

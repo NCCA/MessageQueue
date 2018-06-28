@@ -1,6 +1,6 @@
 #include <iostream>
 #include "NGLMessage.h"
-
+#include <ngl/fmt/format.h>
 #include <thread>
 
 int main()
@@ -9,24 +9,15 @@ int main()
   message.startServer();
   while(1)
   {
-  for(size_t i=97; i<97+26; ++i)
-  {
-    std::string msg="test message ";
-    msg+=std::to_string(i);
-    msg+='\n';
-    message.addMessage(msg,Colours::NORMAL,TimeFormat::TIME);
-    message.addMessage(msg,Colours::RED);
-    message.addMessage(msg,Colours::GREEN);
-    message.addMessage(msg,Colours::YELLOW,TimeFormat::TIMEDATE);
-    message.addMessage(msg,Colours::BLUE);
-
-    message.addMessage(msg,Colours::MAGENTA,TimeFormat::TIMEDATEDAY);
-    message.addMessage(msg,Colours::CYAN);
-    message.addMessage(msg,Colours::WHITE,TimeFormat::TIMEDATEDAY);
-    message.addMessage(msg,Colours::RESET);
-
-  }
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    for(size_t i=0; i<100; ++i)
+    {
+      std::string msg="Basic Message Generation";
+      msg+=std::to_string(i);
+      msg+='\n';
+      message.addMessage(msg,Colours::NORMAL,TimeFormat::TIME);
+      message.addMessage(fmt::format("Test format {0} {1} {0}\n",1,i,3),Colours::RED);
+    }
+  //std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
 }

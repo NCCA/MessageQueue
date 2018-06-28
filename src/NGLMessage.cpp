@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <strstream>
+#include <cstdarg>
 
 #include "AbstractMessageConsumer.h"
 #include "STDERRConsumer.h"
@@ -92,12 +93,22 @@ namespace ngl
   void NGLMessage::addMessage(const std::string &_message, Colours _c, TimeFormat _timeFormat)
   {
     std::lock_guard<std::mutex> lock(g_messageQueueLock);
-
     // add to front
     s_messageQueue.insert(std::begin(s_messageQueue),{std::chrono::system_clock::now(),_message,_c,_timeFormat});
+    //std::this_thread::sleep_for(std::chrono::milliseconds(4));
+
   }
 
 
+  void NGLMessage::addMessage(const std::string &_message )
+  {
+    std::lock_guard<std::mutex> lock(g_messageQueueLock);
+
+
+    s_messageQueue.insert(std::begin(s_messageQueue),{std::chrono::system_clock::now(),_message});
+    //std::this_thread::sleep_for(std::chrono::milliseconds(4));
+
+  }
 
   void NGLMessage::startMessageConsumer()
   {
@@ -115,14 +126,13 @@ namespace ngl
       {
         while(s_consuming.test_and_set())
         {
-        std::lock_guard<std::mutex> lock(g_messageQueueLock);
-        if(s_messageQueue.size() !=0)
-        {
-          auto msg=s_messageQueue.back();
-          s_messageQueue.pop_back();
-          m_consumer->consume(msg);
-        }
-  //      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          std::lock_guard<std::mutex> lock(g_messageQueueLock);
+          if(s_messageQueue.size() !=0)
+          {
+            auto msg=s_messageQueue.back();
+            s_messageQueue.pop_back();
+            m_consumer->consume(msg);
+          }
         }
 
       });
@@ -166,31 +176,30 @@ namespace ngl
        {
          while(s_server.test_and_set())
          {
-         std::lock_guard<std::mutex> lock(g_serverLock);
-         if(s_messageQueue.size() !=0)
-         {
-           auto msg=s_messageQueue.back();
-           s_messageQueue.pop_back();
-           std::strstream message;
-           message<<AbstractMessageConsumer::getColourString(msg.colour);
-
-           // put_time returns a " " if time string is empty which is annoying!
-           if(msg.timeFormat !=TimeFormat::NONE)
+           std::lock_guard<std::mutex> serverLock(g_serverLock);
+           std::lock_guard<std::mutex> queueLock(g_messageQueueLock);
+           if(s_messageQueue.size() !=0)
            {
-             std::string fmt=AbstractMessageConsumer::getTimeString(msg.timeFormat);
-             std::time_t tm = std::chrono::system_clock::to_time_t(msg.time);
-             message<<std::put_time(std::localtime(&tm),fmt.c_str())<<' ';
+             auto msg=s_messageQueue.back();
+             s_messageQueue.pop_back();
+             std::strstream message;
+             message<<AbstractMessageConsumer::getColourString(msg.colour);
+
+             // put_time returns a " " if time string is empty which is annoying!
+             if(msg.timeFormat !=TimeFormat::NONE)
+             {
+               std::string fmt=AbstractMessageConsumer::getTimeString(msg.timeFormat);
+               std::time_t tm = std::chrono::system_clock::to_time_t(msg.time);
+               message<<std::put_time(std::localtime(&tm),fmt.c_str())<<' ';
+             }
+
+             message<<msg.message<<' ';
+             write(s_fifoID,message.str(),message.pcount());
+             std::this_thread::sleep_for(std::chrono::milliseconds(10));
            }
-
-
-           message<<msg.message;
-           write(s_fifoID,message.str(),message.pcount());
-
-         }
-         std::this_thread::sleep_for(std::chrono::milliseconds(1));
          }
 
-       });
+       }); // end lambda
        s_active=true;
        t.detach();
        return true;
