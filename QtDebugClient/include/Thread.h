@@ -18,6 +18,7 @@ class Thread  : public  QThread
 
   signals:
     void text(QColor _colour,QString _text);
+    void clearText();
   public slots:
     void stopThread(){m_active=false;}
 

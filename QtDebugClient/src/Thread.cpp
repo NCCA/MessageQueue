@@ -24,7 +24,12 @@ void Thread::run()
       {
         QString message(data);
         auto index=message.indexOf("m");
-
+        if (message.contains("\033[2J\033[1;1H") )
+        {
+          emit clearText();
+        }
+        else
+        {
         QColor colour;
         QString colourString=message;
         colourString.truncate(index);
@@ -50,6 +55,7 @@ void Thread::run()
                 colour=Qt::GlobalColor::white;
 
         emit text(colour,QString(&data[index+1]).trimmed());
+        }
       }
       }
   close(fifoID);

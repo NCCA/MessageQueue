@@ -20,7 +20,8 @@ MainWindow::MainWindow(QWidget *parent) :
                 m_connected=true;
 
                 m_thread->start();
-                connect(m_thread ,SIGNAL(text(QColor,QString)),this,SLOT(updateText(QColor,QString)));
+                connect(m_thread,SIGNAL(text(QColor,QString)),this,SLOT(updateText(QColor,QString)));
+                connect(m_thread,SIGNAL(clearText()),this->m_ui->m_textEdit,SLOT(clear()));
 
               }
               else

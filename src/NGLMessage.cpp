@@ -7,7 +7,9 @@
 #include <unistd.h>
 #include <strstream>
 #include <cstdarg>
-
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <ngl/fmt/format.h>
 #include "AbstractMessageConsumer.h"
 #include "STDERRConsumer.h"
 #include "STDOutConsumer.h"
@@ -103,12 +105,32 @@ namespace ngl
   void NGLMessage::addMessage(const std::string &_message )
   {
     std::lock_guard<std::mutex> lock(g_messageQueueLock);
-
-
     s_messageQueue.insert(std::begin(s_messageQueue),{std::chrono::system_clock::now(),_message});
     //std::this_thread::sleep_for(std::chrono::milliseconds(4));
+  }
+
+  void NGLMessage::addMessage(int x, int y,const std::string &_message,Colours _c)
+  {
+    std::lock_guard<std::mutex> lock(g_messageQueueLock);
+    // add to front
+    std::string loc=fmt::format("\033[{0};{1}H",x,y);
+    loc+=_message;
+    s_messageQueue.insert(std::begin(s_messageQueue),{std::chrono::system_clock::now(),loc,_c,TimeFormat::NONE});
 
   }
+
+
+
+  void NGLMessage::sendClearTerminal()
+  {
+    std::lock_guard<std::mutex> lock(g_messageQueueLock);
+    s_messageQueue.insert(std::begin(s_messageQueue),{std::chrono::system_clock::now(),"\033[2J\033[1;1H"});
+
+  }
+
+
+
+
 
   void NGLMessage::startMessageConsumer()
   {
